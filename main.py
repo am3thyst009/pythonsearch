@@ -9,7 +9,7 @@ from logger import get_logger
 
 logger = get_logger(__name__)
 
-# Цвета для консоли (ANSI)
+# ─── Цвета для консоли (ANSI) ─────────────────────────────────────────────────
 RESET  = "\033[0m"
 BOLD   = "\033[1m"
 CYAN   = "\033[96m"
@@ -46,7 +46,32 @@ def print_menu():
     print(f"  {color('0', RED)}   — Выход\n")
 
 
-# Сценарий поиска
+# ─── Сценарий поиска ──────────────────────────────────────────────────────────
+
+def _ask_sources() -> list:
+    """Спрашивает пользователя где искать. Возвращает список источников."""
+    SOURCE_MAP = {"1": "anime", "2": "movies", "3": "games"}
+    GENRE_HINTS = {
+        "anime":  "action, comedy, drama, fantasy, romance, thriller, horror, sports",
+        "movies": "action, comedy, drama, thriller, horror, romance, sci-fi",
+        "games":  "action, strategy, rpg, shooter, adventure, puzzle, racing, sports",
+    }
+    print(f"\n  {color('Где искать?', CYAN)}")
+    print(f"  {color('1', YELLOW)} — Аниме")
+    print(f"  {color('2', YELLOW)} — Фильмы")
+    print(f"  {color('3', YELLOW)} — Игры")
+    print(f"  {color('Enter', YELLOW)} — Везде\n")
+    choice = input(f"  {color('Источник:', CYAN)} ").strip()
+
+    if choice in SOURCE_MAP:
+        selected = [SOURCE_MAP[choice]]
+        hint = GENRE_HINTS[selected[0]]
+        print(color(f"  Жанры для этого источника: {hint}", DIM))
+    else:
+        selected = ["anime", "movies", "games"]
+
+    return selected
+
 
 async def do_search():
     query = input(f"\n  {color('Введите запрос:', CYAN)} ").strip()
@@ -54,19 +79,24 @@ async def do_search():
         print(color("  Запрос не может быть пустым.", RED))
         return
 
-    # Фильтры
-    print(f"  {color('Фильтры (Enter — пропустить):', DIM)}")
-    genre = input(f"  Жанр (например: action, comedy, rpg): ").strip()
+    selected_sources = _ask_sources()
+
+    print(f"\n  {color('Фильтры (Enter — пропустить):', DIM)}")
+    genre = input(f"  Жанр: ").strip()
     year  = input(f"  Год выпуска (например: 2020): ").strip()
 
     page = 1
-    last_query_args = (query, genre, year)  # запомним чтобы не спрашивать снова при "ещё"
 
     while True:
-        print(color(f"\n  Ищем по всем источникам... (стр. {page})\n", DIM))
-        logger.info("Поиск: query='%s' genre='%s' year='%s' page=%d", query, genre, year, page)
+        src_label = " + ".join(
+            {"anime": "Аниме", "movies": "Фильмы", "games": "Игры"}[s]
+            for s in selected_sources
+        )
+        print(color(f"\n  Ищем в: {src_label} (стр. {page})...\n", DIM))
+        logger.info("Поиск: query='%s' sources=%s genre='%s' year='%s' page=%d",
+                    query, selected_sources, genre, year, page)
 
-        results = await search_all(query, page=page, genre=genre, year=year)
+        results = await search_all(query, page=page, genre=genre, year=year, sources=selected_sources)
 
         sources = ", ".join(k for k, v in results.items() if v)
         if sources and page == 1:
@@ -120,7 +150,7 @@ def _add_to_fav(all_items: list[dict]):
         print(color("  Отменено.", DIM))
 
 
-# История
+# ─── История ──────────────────────────────────────────────────────────────────
 
 def show_history():
     header("📋 История поиска")
@@ -135,7 +165,7 @@ def show_history():
     print()
 
 
-# Избранное
+# ─── Избранное ────────────────────────────────────────────────────────────────
 
 def show_favorites():
     header("⭐ Избранное")
@@ -155,7 +185,7 @@ def show_favorites():
         print(color("  ✓ Запись удалена.", GREEN))
 
 
-# Статистика
+# ─── Статистика ───────────────────────────────────────────────────────────────
 
 def show_stats():
     header("📊 Статистика поиска")
@@ -176,7 +206,7 @@ def show_stats():
     print()
 
 
-# Экспорт в CSV
+# ─── Экспорт в CSV ────────────────────────────────────────────────────────────
 
 def do_export():
     path = os.path.join(os.path.dirname(__file__), "favorites.csv")
@@ -188,7 +218,7 @@ def do_export():
         print(color(f"\n  ✓ Экспортировано {count} записей → {path}\n", GREEN))
 
 
-# Главный цикл
+# ─── Главный цикл ─────────────────────────────────────────────────────────────
 
 async def main():
     init_db()

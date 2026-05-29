@@ -5,11 +5,11 @@ from dotenv import load_dotenv
 from decorators import cache, timer, retry
 from logger import get_logger
 
-load_dotenv()
+load_dotenv()  # читает ключи из файла .env
 
 logger = get_logger(__name__)
 
-# Ключи из .env
+# ─── Ключи из .env ────────────────────────────────────────────────────────────
 OMDB_API_KEY = os.getenv("OMDB_API_KEY", "trilogy")
 RAWG_API_KEY = os.getenv("RAWG_API_KEY", "free")
 
@@ -20,7 +20,7 @@ RAWG_URL  = "https://api.rawg.io/api/games"
 PAGE_SIZE = 5  # результатов на страницу
 
 
-# парсеры ответов
+# ─── Парсеры ответов ──────────────────────────────────────────────────────────
 
 def parse_anime(data: dict) -> list[dict]:
     results = []
@@ -65,7 +65,7 @@ def parse_games(data: dict) -> list[dict]:
     return results
 
 
-# Запросы к API
+# ─── Запросы к API ────────────────────────────────────────────────────────────
 
 @retry(attempts=3, delay=1.0)
 @cache(ttl=300)
@@ -76,7 +76,7 @@ async def search_anime(
     genre: str = "",
     year: str = "",
 ) -> list[dict]:
-    """Поиск аниме через Jikan API"""
+    """Поиск аниме через Jikan API. Поддерживает пагинацию и фильтр по году."""
     params = {"q": query, "limit": PAGE_SIZE, "page": page}
     if year:
         params["start_date"] = f"{year}-01-01"
@@ -103,7 +103,7 @@ async def search_movies(
     genre: str = "",
     year: str = "",
 ) -> list[dict]:
-    """Поиск фильмов через OMDB API."""
+    """Поиск фильмов через OMDB API. Поддерживает пагинацию и фильтр по году."""
     params = {"s": query, "apikey": OMDB_API_KEY, "page": page}
     if year:
         params["y"] = year
@@ -125,7 +125,7 @@ async def search_games(
     genre: str = "",
     year: str = "",
 ) -> list[dict]:
-    """Поиск игр через RAWG API."""
+    """Поиск игр через RAWG API. Поддерживает пагинацию, фильтр по жанру и году."""
     params = {
         "search": query,
         "key": RAWG_API_KEY,
@@ -151,25 +151,39 @@ async def search_all(
     page: int = 1,
     genre: str = "",
     year: str = "",
-) -> dict[str, list[dict]]:
+    sources: list = None,
+) -> dict:
     """
-    Параллельный поиск по всем трём источникам через asyncio.gather.
+    Параллельный поиск через asyncio.gather.
+    sources — список из "anime", "movies", "games". None = искать везде.
+    Поддерживает пагинацию и фильтры.
     """
-    logger.debug("search_all: query='%s' page=%d genre='%s' year='%s'", query, page, genre, year)
+    if sources is None:
+        sources = ["anime", "movies", "games"]
+
+    logger.debug(
+        "search_all: query='%s' page=%d genre='%s' year='%s' sources=%s",
+        query, page, genre, year, sources,
+    )
+
     async with aiohttp.ClientSession() as session:
-        results = await asyncio.gather(
-            search_anime(query, session, page, genre, year),
-            search_movies(query, session, page, genre, year),
-            search_games(query, session, page, genre, year),
+        tasks = {
+            "anime":  search_anime(query, session, page, genre, year)  if "anime"  in sources else None,
+            "movies": search_movies(query, session, page, genre, year) if "movies" in sources else None,
+            "games":  search_games(query, session, page, genre, year)  if "games"  in sources else None,
+        }
+        # gather только активные задачи
+        active_keys = [k for k, v in tasks.items() if v is not None]
+        gathered = await asyncio.gather(
+            *[tasks[k] for k in active_keys],
             return_exceptions=True,
         )
 
-    for i, r in enumerate(results):
-        if isinstance(r, Exception):
-            logger.error("Ошибка в источнике %d: %s", i, r)
+    output: dict[str, list[dict]] = {"anime": [], "movies": [], "games": []}
+    for key, result in zip(active_keys, gathered):
+        if isinstance(result, Exception):
+            logger.error("Ошибка в источнике '%s': %s", key, result)
+        else:
+            output[key] = result
 
-    return {
-        "anime":  results[0] if not isinstance(results[0], Exception) else [],
-        "movies": results[1] if not isinstance(results[1], Exception) else [],
-        "games":  results[2] if not isinstance(results[2], Exception) else [],
-    }
+    return output
