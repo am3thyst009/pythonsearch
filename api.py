@@ -5,11 +5,11 @@ from dotenv import load_dotenv
 from decorators import cache, timer, retry
 from logger import get_logger
 
-load_dotenv()  # читает ключи из файла .env
+load_dotenv()
 
 logger = get_logger(__name__)
 
-# ─── Ключи из .env ────────────────────────────────────────────────────────────
+# Ключи из .env
 OMDB_API_KEY = os.getenv("OMDB_API_KEY", "trilogy")
 RAWG_API_KEY = os.getenv("RAWG_API_KEY", "free")
 
@@ -20,7 +20,7 @@ RAWG_URL  = "https://api.rawg.io/api/games"
 PAGE_SIZE = 5  # результатов на страницу
 
 
-# ─── Парсеры ответов ──────────────────────────────────────────────────────────
+# парсеры ответов
 
 def parse_anime(data: dict) -> list[dict]:
     results = []
@@ -65,7 +65,7 @@ def parse_games(data: dict) -> list[dict]:
     return results
 
 
-# ─── Запросы к API ────────────────────────────────────────────────────────────
+# Запросы к API
 
 @retry(attempts=3, delay=1.0)
 @cache(ttl=300)
@@ -76,7 +76,7 @@ async def search_anime(
     genre: str = "",
     year: str = "",
 ) -> list[dict]:
-    """Поиск аниме через Jikan API. Поддерживает пагинацию и фильтр по году."""
+    """Поиск аниме через Jikan API"""
     params = {"q": query, "limit": PAGE_SIZE, "page": page}
     if year:
         params["start_date"] = f"{year}-01-01"
@@ -103,7 +103,7 @@ async def search_movies(
     genre: str = "",
     year: str = "",
 ) -> list[dict]:
-    """Поиск фильмов через OMDB API. Поддерживает пагинацию и фильтр по году."""
+    """Поиск фильмов через OMDB API."""
     params = {"s": query, "apikey": OMDB_API_KEY, "page": page}
     if year:
         params["y"] = year
@@ -125,7 +125,7 @@ async def search_games(
     genre: str = "",
     year: str = "",
 ) -> list[dict]:
-    """Поиск игр через RAWG API. Поддерживает пагинацию, фильтр по жанру и году."""
+    """Поиск игр через RAWG API."""
     params = {
         "search": query,
         "key": RAWG_API_KEY,
@@ -154,7 +154,6 @@ async def search_all(
 ) -> dict[str, list[dict]]:
     """
     Параллельный поиск по всем трём источникам через asyncio.gather.
-    Поддерживает пагинацию и фильтры, которые пробрасываются в каждый запрос.
     """
     logger.debug("search_all: query='%s' page=%d genre='%s' year='%s'", query, page, genre, year)
     async with aiohttp.ClientSession() as session:

@@ -91,7 +91,7 @@ def clear_history():
         conn.commit()
 
 
-# ─── Экспорт и статистика ─────────────────────────────────────────────────────
+# Экспорт и статистика
 
 def export_favorites_csv(path: str) -> int:
     """
@@ -112,7 +112,6 @@ def export_favorites_csv(path: str) -> int:
 def get_history_stats() -> dict:
     """
     Статистика по истории: топ-5 запросов и разбивка по источникам.
-    Использует GROUP BY и COUNT в SQL.
     """
     with get_connection() as conn:
         top_queries = conn.execute("""

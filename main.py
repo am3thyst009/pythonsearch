@@ -9,7 +9,7 @@ from logger import get_logger
 
 logger = get_logger(__name__)
 
-# ─── Цвета для консоли (ANSI) ─────────────────────────────────────────────────
+# Цвета для консоли (ANSI)
 RESET  = "\033[0m"
 BOLD   = "\033[1m"
 CYAN   = "\033[96m"
@@ -46,7 +46,7 @@ def print_menu():
     print(f"  {color('0', RED)}   — Выход\n")
 
 
-# ─── Сценарий поиска ──────────────────────────────────────────────────────────
+# Сценарий поиска
 
 async def do_search():
     query = input(f"\n  {color('Введите запрос:', CYAN)} ").strip()
@@ -63,7 +63,7 @@ async def do_search():
     last_query_args = (query, genre, year)  # запомним чтобы не спрашивать снова при "ещё"
 
     while True:
-        print(color(f"\n  Ищем по всем источникам параллельно... (стр. {page})\n", DIM))
+        print(color(f"\n  Ищем по всем источникам... (стр. {page})\n", DIM))
         logger.info("Поиск: query='%s' genre='%s' year='%s' page=%d", query, genre, year, page)
 
         results = await search_all(query, page=page, genre=genre, year=year)
@@ -120,7 +120,7 @@ def _add_to_fav(all_items: list[dict]):
         print(color("  Отменено.", DIM))
 
 
-# ─── История ──────────────────────────────────────────────────────────────────
+# История
 
 def show_history():
     header("📋 История поиска")
@@ -135,7 +135,7 @@ def show_history():
     print()
 
 
-# ─── Избранное ────────────────────────────────────────────────────────────────
+# Избранное
 
 def show_favorites():
     header("⭐ Избранное")
@@ -144,7 +144,8 @@ def show_favorites():
         print(color("  Избранное пусто.\n", DIM))
         return
     for row in rows:
-        print(f"  {color(f'[{row[\"id\"]}]', YELLOW)} {color(row['title'], BOLD)}")
+        row_id = row["id"]
+        print(f"  {color(f'[{row_id}]', YELLOW)} {color(row['title'], BOLD)}")
         print(f"      {row['source']}  |  {row['extra_info']}")
         print(f"      Добавлено: {color(row['added_at'], DIM)}\n")
 
@@ -154,7 +155,7 @@ def show_favorites():
         print(color("  ✓ Запись удалена.", GREEN))
 
 
-# ─── Статистика ───────────────────────────────────────────────────────────────
+# Статистика
 
 def show_stats():
     header("📊 Статистика поиска")
@@ -175,7 +176,7 @@ def show_stats():
     print()
 
 
-# ─── Экспорт в CSV ────────────────────────────────────────────────────────────
+# Экспорт в CSV
 
 def do_export():
     path = os.path.join(os.path.dirname(__file__), "favorites.csv")
@@ -187,7 +188,7 @@ def do_export():
         print(color(f"\n  ✓ Экспортировано {count} записей → {path}\n", GREEN))
 
 
-# ─── Главный цикл ─────────────────────────────────────────────────────────────
+# Главный цикл
 
 async def main():
     init_db()
